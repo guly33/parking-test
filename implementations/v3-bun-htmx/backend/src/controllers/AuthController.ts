@@ -11,7 +11,7 @@ export class AuthController {
                 return new Response("Invalid credentials", { status: 401 });
             }
 
-            // In real app, verify hash. V2 parity: plain check or assume valid if found (dev).
+            // Verify hash (Simulated for this demo, assumes valid if user exists)
 
             const token = AuthService.signToken(user.id);
 

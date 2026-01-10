@@ -8,6 +8,14 @@ export default class SlotsPage extends Component {
     this.router = router;
     this.user = AuthService.getCurrentUser();
     this.days = getNextDays(3);
+
+    // Named handler for cleanup
+    this.htmxConfigHandler = (evt) => {
+      const token = sessionStorage.getItem('token');
+      if (token) {
+        evt.detail.headers['Authorization'] = `Bearer ${token}`;
+      }
+    };
   }
 
   template() {
@@ -75,16 +83,25 @@ export default class SlotsPage extends Component {
       script.src = "https://unpkg.com/htmx.org@1.9.10";
       script.onload = () => {
         // Configure HTMX to send JWT
-        document.body.addEventListener('htmx:configRequest', (evt) => {
-          const token = sessionStorage.getItem('token');
-          if (token) {
-            evt.detail.headers['Authorization'] = `Bearer ${token}`;
-          }
-        });
+        document.body.addEventListener('htmx:configRequest', this.htmxConfigHandler);
         loadSpots();
       };
       document.head.appendChild(script);
     } else {
+      // Ensure listener is attached even if HTMX was already loaded (e.g. from previous navigation)
+      // Clean up old listener first to avoid duplicates if possible? 
+      // Simpler: Just add it, as adding same listener func instance is safe, but here it's anonymous.
+      // We'll trust the global listener pattern or re-attach. 
+      // A safer way for V3 demo:
+      document.body.removeEventListener('htmx:configRequest', this.htmxConfigHandler);
+      // We need the handler function reference to remove it. 
+      // For now, let's just proceed to loadSpots, assuming Auth is global or handled.
+      // Actually, let's just re-add it to be safe, idempotency is hard with anonymous functions.
+      // We will define a named handler in the class.
+      // Re-attach to ensure it's there (idempotent if using same ref? No, different instance per page class)
+      // Actually, document.body is global. If we navigate away and back, we add another one.
+      // That's why we need to remove it in destroy().
+      document.body.addEventListener('htmx:configRequest', this.htmxConfigHandler);
       loadSpots();
     }
 
@@ -100,15 +117,32 @@ export default class SlotsPage extends Component {
         });
         const html = await res.text();
         container.innerHTML = `
-                <table class="w-full border-collapse">
-                    <thead><tr><th class="p-2 border">Spot</th><th class="p-2 border">08-12</th><th class="p-2 border">12-16</th><th class="p-2 border">16-20</th></tr></thead>
+                <table class="w-full" style="border-collapse: separate; border-spacing: 0 8px; width: 100%;">
+                    <thead>
+                        <tr style="text-align: center; color: #374151; font-weight: 800; font-size: 1.1em;">
+                            <th style="padding: 10px; width: 25%; text-align: left;">Spot</th>
+                            <th style="padding: 10px; width: 25%;">08:00 - 12:00</th>
+                            <th style="padding: 10px; width: 25%;">12:00 - 16:00</th>
+                            <th style="padding: 10px; width: 25%;">16:00 - 20:00</th>
+                        </tr>
+                    </thead>
                     <tbody>${html}</tbody>
                 </table>
             `;
         // Tell HTMX to verify the new DOM
-        window.htmx.process(container);
+        if (window.htmx) {
+          window.htmx.process(container);
+        } else {
+          // Fallback if HTMX not ready? It should be by now.
+          console.warn("HTMX not found during process, maybe script failed?");
+        }
       } catch (e) {
-        container.innerHTML = `<div style="color:red">Error loading V3 Backend: ${e.message}</div>`;
+        console.error("V3 Load Error:", e);
+        container.innerHTML = `<div style="text-align: center; padding: 20px; color: #ef4444;">
+            <p><strong>Connection Error</strong></p>
+            <p style="font-size: 0.9em; opacity: 0.8;">Could not load parking slots from V3 Backend.</p>
+            <button onclick="window.location.reload()" style="margin-top: 10px; padding: 5px 10px; cursor: pointer;">Retry</button>
+        </div>`;
       }
     };
 
@@ -132,9 +166,12 @@ export default class SlotsPage extends Component {
     if (this.ws) {
       this.ws.close();
       this.ws = null;
+      if (this.htmxConfigHandler) {
+        document.body.removeEventListener('htmx:configRequest', this.htmxConfigHandler);
+      }
     }
     // Note: HTMX listeners on body/document might persist, but checking for auth config
     // is usually global. We might want to remove specific listeners if we added them to specific elements,
     // but the one in afterRender is on document.body. For now, this is acceptable as it's idempotent-ish.
   }
-}
+} 

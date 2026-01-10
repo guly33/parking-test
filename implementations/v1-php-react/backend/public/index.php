@@ -69,22 +69,32 @@ if (strpos($uri, '/api') === 0) {
 
     $method = $_SERVER['REQUEST_METHOD'];
 
-    // Simple Router (Refactor this later to a Controller::handle($uri, $method))
-    if ($method === 'POST' && $uri === '/api/login') {
+    // Router
+    $router = new \App\Router();
+
+    $router->add('POST', '/api/login', function () use ($db) {
         $authProvider = new \App\DatabaseAuthProvider($db);
         (new AuthService($authProvider))->login();
-    } elseif ($method === 'GET' && $uri === '/api/spots') {
+    });
+
+    $router->add('GET', '/api/spots', function () use ($db) {
         (new ReservationController($db))->getSpots();
-    } elseif ($method === 'GET' && $uri === '/api/stats') {
+    });
+
+    $router->add('GET', '/api/stats', function () use ($db) {
         (new ReservationController($db))->getStats();
-    } elseif ($method === 'POST' && $uri === '/api/reservations') {
+    });
+
+    $router->add('POST', '/api/reservations', function () use ($db) {
         (new ReservationController($db))->createReservation();
-    } elseif ($method === 'PUT' && preg_match('/^\/api\/reservations\/(\d+)\/complete$/', $uri, $matches)) {
-        (new ReservationController($db))->completeReservation($matches[1]);
-    } else {
-        http_response_code(404);
-        echo json_encode(['error' => 'Not Found']);
-    }
+    });
+
+    // Dynamic Route Example: /api/reservations/123/complete
+    $router->add('PUT', '/api/reservations/{id}/complete', function ($id) use ($db) {
+        (new ReservationController($db))->completeReservation($id);
+    });
+
+    $router->dispatch($method, $uri);
     exit;
 }
 

@@ -1,7 +1,15 @@
 import { AuthController } from "./src/controllers/AuthController";
 import { ReservationController } from "./src/controllers/ReservationController";
+import { Router } from "./src/Router";
 
 console.log("Bun Native Server running on :3000 (MVC)");
+
+// Initialize Router
+const router = new Router();
+router.add("POST", "/api/login", AuthController.login);
+router.add("GET", "/api/spots", ReservationController.getSpots);
+router.add("POST", "/api/reservations", ReservationController.createReservation);
+router.add("DELETE", "/api/reservations", ReservationController.releaseReservation);
 
 const server = Bun.serve({
     port: 3000,
@@ -42,18 +50,9 @@ const server = Bun.serve({
         // 2. API Routing
         if (url.pathname.startsWith("/api")) {
             try {
-                if (url.pathname === "/api/login" && req.method === "POST") {
-                    return await AuthController.login(req);
-                }
-                if (url.pathname === "/api/spots" && req.method === "GET") {
-                    return await ReservationController.getSpots(req);
-                }
-                if (url.pathname === "/api/reservations" && req.method === "POST") {
-                    return await ReservationController.createReservation(req);
-                }
-                if (url.pathname === "/api/reservations" && req.method === "DELETE") {
-                    return await ReservationController.releaseReservation(req);
-                }
+                const response = await router.handle(req);
+                if (response) return response;
+
                 return new Response("Not Found", { status: 404, headers: corsHeaders });
             } catch (error) {
                 console.error(error);

@@ -12,17 +12,18 @@ export class ReservationController {
         const date = url.searchParams.get("date") || new Date().toISOString().split("T")[0];
         const startStr = `${date} 00:00:00`;
         const endStr = `${date} 23:59:59`;
-
-        // 1. Auth (Optional for viewing, but needed for "Release" button ownership)
         let currentUserId: number | null = null;
+        // Optional Auth: If token is present and valid, capture user ID for ownership checks.
+        // If invalid or missing, proceed as guest (view-only).
         try {
             const authHeader = req.headers.get("Authorization");
             if (authHeader) {
                 const payload = AuthService.verifyToken(authHeader);
                 currentUserId = payload.uid;
             }
-        } catch (e) {
-            // Ignore invalid token for view-only
+        } catch (ignored) {
+            // Token invalid or expired; treat as guest.
+            currentUserId = null;
         }
 
         try {
@@ -44,58 +45,73 @@ export class ReservationController {
                         return r.spot_id === spot.id && startObj.getHours() < slot.end && endObj.getHours() > slot.start;
                     });
 
+                    // STYLES
+                    const cardStyle = `
+                        display: flex; 
+                        flex-direction: column; 
+                        justify-content: center; 
+                        align-items: center; 
+                        height: 70px; 
+                        margin: 2px;
+                        border-radius: 8px; 
+                        font-family: sans-serif;
+                        transition: all 0.2s;
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                    `;
+
+                    // STATE: AVAILABLE
                     const isBooked = !!res;
-                    let content = `<span class="badge bg-green" style="background: #4caf50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">Available</span>`;
-                    let action = `hx-post="${CONFIG.API_BASE_URL}/api/reservations" hx-vals='{"spot_id": ${spot.id}, "start": ${slot.start}, "end": ${slot.end}, "date": "${date}"}'`;
-                    let cursorInfo = `cursor: pointer; opacity: 1;`;
-                    let bgColor = isBooked ? '#f5f5f5' : '#e8f5e9';
+                    let content = `<span style="color: white; font-weight: bold; font-size: 0.9em;">Available</span>`;
+                    let startAction = `hx-post="${CONFIG.API_BASE_URL}/api/reservations" hx-vals='{"spot_id": ${spot.id}, "start": ${slot.start}, "end": ${slot.end}, "date": "${date}"}'`;
+                    let extraStyles = `
+                        background: #4caf50; 
+                        cursor: pointer;
+                    `;
 
                     // Time Check
-                    const now = new Date(); // Use server time
+                    const now = new Date();
                     const todayStr = now.toISOString().split('T')[0];
-
-                    // Logic Logic Logic
                     const isToday = date === todayStr;
                     const isPastDate = date < todayStr;
-                    const isPastTime = isToday && now.getHours() >= slot.start; // Strict Start Time Expiry
+                    const isPastTime = isToday && now.getHours() >= slot.start;
                     const isPast = isPastDate || isPastTime;
 
                     if (isPast) {
-                        content = `<span style="background: #e0e0e0; color: #757575; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">Expired</span>`;
-                        action = "";
-                        cursorInfo = `cursor: not-allowed; opacity: 0.6;`;
-                        bgColor = '#f5f5f5';
+                        content = `<span style="color: #9e9e9e; font-weight: bold;">Expired</span>`;
+                        startAction = "";
+                        extraStyles = `background: #e0e0e0; cursor: not-allowed; opacity: 0.7;`;
                     } else if (isBooked) {
                         if (currentUserId && res.user_id == currentUserId) {
+                            // SELF BOOKED
                             content = `
-                                <span style="font-size: 0.8em; font-weight: bold; display: block; margin-bottom: 4px;">Booked</span>
-                                <span class="badge" style="background: white; color: #d32f2f; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: bold; border: 1px solid #d32f2f;">Release</span>
+                                <span style="color: white; font-weight: bold; font-size: 0.9em; margin-bottom: 4px;">Booked</span>
+                                <button style="
+                                    background: white; 
+                                    color: #d32f2f; 
+                                    border: none; 
+                                    padding: 4px 12px; 
+                                    border-radius: 4px; 
+                                    font-weight: bold; 
+                                    cursor: pointer;
+                                    font-size: 0.75em;
+                                    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+                                ">Release</button>
                             `;
-                            action = `hx-delete="${CONFIG.API_BASE_URL}/api/reservations?id=${res.id}"`;
-                            cursorInfo = `cursor: pointer; opacity: 1; color: white;`;
-                            bgColor = '#ef5350';
+                            startAction = `hx-delete="${CONFIG.API_BASE_URL}/api/reservations?id=${res.id}"`;
+                            extraStyles = `background: #ef5350; cursor: pointer;`;
                         } else {
-                            content = `<span class="badge bg-red" style="background: #e57373; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">Booked</span>`;
-                            action = "";
-                            cursorInfo = `cursor: not-allowed; opacity: 0.8;`;
-                            bgColor = '#eeeeee';
+                            // OTHER BOOKED
+                            content = `<span style="color: white; font-weight: bold; font-size: 0.9em;">Booked</span>`;
+                            startAction = "";
+                            extraStyles = `background: #e57373; cursor: not-allowed; opacity: 0.8;`;
                         }
                     }
 
+                    // Hover effect via inline script? No, keep it simple V3.
+                    // Just return the cell
                     return `
-                        <td style="padding: 4px; border-bottom: 1px solid #eee;">
-                            <div ${action} style="
-                                ${cursorInfo} 
-                                background: ${bgColor}; 
-                                padding: 4px; 
-                                border-radius: 4px; 
-                                text-align: center;
-                                display: flex;
-                                flexDirection: column;
-                                justifyContent: center;
-                                alignItems: center;
-                                height: 60px;
-                            ">
+                        <td style="padding: 6px; border-bottom: 1px solid #f0f0f0;">
+                            <div ${startAction} style="${cardStyle} ${extraStyles}">
                                 ${content}
                             </div>
                         </td>

@@ -7,10 +7,12 @@ export default class Component {
 		return '';
 	}
 
-	afterRender() {}
+	afterRender() { }
 
 	render() {
 		this.element.innerHTML = this.template();
 		this.afterRender();
 	}
+
+	destroy() { }
 }

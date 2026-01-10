@@ -45,6 +45,7 @@ services:
       - DB_USER=user
       - DB_PASS=password
       - DB_NAME=parking
+      - JWT_SECRET=super_secret_key_change_me
     depends_on:
       - db
     volumes:
@@ -75,6 +76,7 @@ services:
       - "8082:8000"
     environment:
       - DATABASE_URL=postgresql://user:password@db/parking
+      - JWT_SECRET=super_secret_key_change_me
     depends_on:
       - db
       - websocket
@@ -90,6 +92,7 @@ services:
       - "8083:3000"
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/parking
+      - JWT_SECRET=super_secret_key_change_me
     depends_on:
       - db
       - websocket

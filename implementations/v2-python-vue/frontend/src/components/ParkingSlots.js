@@ -7,7 +7,7 @@ const SLOTS = [
 ];
 
 export function mount(element) {
-    createApp({
+    const app = createApp({
         setup() {
             const spots = ref([]);
             const loading = ref(true);
@@ -39,6 +39,7 @@ export function mount(element) {
 
             // --- Data Fetching ---
             const fetchSpots = async () => {
+                if (!token) return;
                 try {
                     const dateStr = selectedDate.value.toLocaleDateString('en-CA');
                     const res = await fetch(`http://localhost:8082/api/spots?date=${dateStr}`);
@@ -231,5 +232,8 @@ export function mount(element) {
                 </div>
             </div>
         `
-    }).mount(element);
+    });
+
+    app.mount(element);
+    return () => app.unmount();
 }

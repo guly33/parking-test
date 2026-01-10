@@ -20,6 +20,10 @@ export default class Router {
 
 		if (!PageClass) return;
 
+		if (this.currentPage && typeof this.currentPage.destroy === 'function') {
+			this.currentPage.destroy();
+		}
+
 		this.currentPage = new PageClass(this.rootElement, this);
 		this.currentPage.render();
 

@@ -69,7 +69,14 @@ export default class SlotsPage extends Component {
     // Dynamic import to support splitting
     import('../components/ParkingSlots.js').then(({ mount }) => {
       container.innerHTML = ''; // Clear placeholder
-      mount(container);
+      this.unmountVue = mount(container);
     }).catch(err => console.error("Failed to load Vue component", err));
+  }
+
+  destroy() {
+    if (this.unmountVue) {
+      this.unmountVue();
+      this.unmountVue = null;
+    }
   }
 }

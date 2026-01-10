@@ -34,6 +34,9 @@ const Slots = () => {
     }, []);
 
     const fetchSpots = useCallback(async () => {
+        const token = sessionStorage.getItem('token');
+        if (!token) return;
+
         try {
             // Send YYYY-MM-DD (Local)
             const dateStr = selectedDate.toLocaleDateString('en-CA');

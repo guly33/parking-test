@@ -110,13 +110,28 @@ export default class SlotsPage extends Component {
     };
 
     // Re-load on date change
-    window.addEventListener('parking-date-change', () => loadSpots());
+    this.refreshListener = () => loadSpots();
+    window.addEventListener('parking-date-change', this.refreshListener);
 
     // Connect WS (Shared Broker) for Auto-Refresh
-    const ws = new WebSocket('ws://localhost:8080');
-    ws.onmessage = (e) => {
+    this.ws = new WebSocket('ws://localhost:8080');
+    this.ws.onmessage = (e) => {
       const data = JSON.parse(e.data);
       if (data.event === 'update') loadSpots();
     };
+  }
+
+  destroy() {
+    if (this.refreshListener) {
+      window.removeEventListener('parking-date-change', this.refreshListener);
+      this.refreshListener = null;
+    }
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    // Note: HTMX listeners on body/document might persist, but checking for auth config
+    // is usually global. We might want to remove specific listeners if we added them to specific elements,
+    // but the one in afterRender is on document.body. For now, this is acceptable as it's idempotent-ish.
   }
 }

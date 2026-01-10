@@ -69,7 +69,14 @@ export default class SlotsPage extends Component {
     // Dynamic import to support splitting
     import('../react-main.jsx').then(({ mountParkingSlots }) => {
       container.innerHTML = ''; // Clear placeholder
-      mountParkingSlots(container);
+      this.unmountReact = mountParkingSlots(container);
     }).catch(err => console.error("Failed to load React component", err));
+  }
+
+  destroy() {
+    if (this.unmountReact) {
+      this.unmountReact();
+      this.unmountReact = null;
+    }
   }
 }

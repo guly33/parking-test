@@ -2,7 +2,9 @@ import jwt
 import datetime
 from fastapi import HTTPException, Request
 
-JWT_SECRET = "example_key"
+import os
+
+JWT_SECRET = os.getenv("JWT_SECRET", "default_dev_secret")
 ALGORITHM = "HS256"
 
 class AuthService:

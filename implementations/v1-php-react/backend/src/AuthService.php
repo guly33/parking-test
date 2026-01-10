@@ -9,11 +9,12 @@ use Firebase\JWT\JWT;
 class AuthService
 {
     private $provider;
-    private $key = "example_key"; // In prod, use getenv('JWT_SECRET')
+    private $key;
 
     public function __construct(AuthenticationProvider $provider)
     {
         $this->provider = $provider;
+        $this->key = getenv('JWT_SECRET') ?: 'default_dev_secret';
     }
 
     public function login()

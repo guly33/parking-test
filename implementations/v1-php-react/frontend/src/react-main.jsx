@@ -9,4 +9,5 @@ export function mountParkingSlots(element) {
             <Slots />
         </React.StrictMode>
     );
+    return () => root.unmount();
 }

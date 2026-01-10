@@ -16,10 +16,10 @@ class Database
             return $this->pdo;
         }
 
-        $host = getenv('DB_HOST') ?: 'db';
-        $db = getenv('DB_NAME') ?: 'parking';
-        $user = getenv('DB_USER') ?: 'user';
-        $pass = getenv('DB_PASS') ?: 'password';
+        $host = getenv('DB_HOST') ?: throw new \Exception('DB_HOST not set');
+        $db = getenv('DB_NAME') ?: throw new \Exception('DB_NAME not set');
+        $user = getenv('DB_USER') ?: throw new \Exception('DB_USER not set');
+        $pass = getenv('DB_PASS') ?: throw new \Exception('DB_PASS not set');
         $port = getenv('DB_PORT') ?: '5432';
 
         $dsn = "pgsql:host=$host;port=$port;dbname=$db;";

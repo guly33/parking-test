@@ -2,6 +2,7 @@ import { AuthService } from "../services/AuthService";
 import { WSService } from "../services/WSService";
 import { SpotService } from "../services/SpotService";
 import { ReservationService } from "../services/ReservationService";
+import { CONFIG } from "../config";
 
 export class ReservationController {
 
@@ -45,20 +46,18 @@ export class ReservationController {
 
                     const isBooked = !!res;
                     let content = `<span class="badge bg-green" style="background: #4caf50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">Available</span>`;
-                    let action = `hx-post="http://localhost:8083/api/reservations" hx-vals='{"spot_id": ${spot.id}, "start": ${slot.start}, "end": ${slot.end}, "date": "${date}"}'`;
+                    let action = `hx-post="${CONFIG.API_BASE_URL}/api/reservations" hx-vals='{"spot_id": ${spot.id}, "start": ${slot.start}, "end": ${slot.end}, "date": "${date}"}'`;
                     let cursorInfo = `cursor: pointer; opacity: 1;`;
                     let bgColor = isBooked ? '#f5f5f5' : '#e8f5e9';
 
                     // Time Check
-                    const nowUTC = new Date();
-                    const TZ_OFFSET_HOURS = 2;
-                    const now = new Date(nowUTC.getTime() + (TZ_OFFSET_HOURS * 60 * 60 * 1000));
+                    const now = new Date(); // Use server time
                     const todayStr = now.toISOString().split('T')[0];
 
                     // Logic Logic Logic
                     const isToday = date === todayStr;
                     const isPastDate = date < todayStr;
-                    const isPastTime = isToday && now.getUTCHours() >= slot.start; // Strict Start Time Expiry
+                    const isPastTime = isToday && now.getHours() >= slot.start; // Strict Start Time Expiry
                     const isPast = isPastDate || isPastTime;
 
                     if (isPast) {
@@ -72,7 +71,7 @@ export class ReservationController {
                                 <span style="font-size: 0.8em; font-weight: bold; display: block; margin-bottom: 4px;">Booked</span>
                                 <span class="badge" style="background: white; color: #d32f2f; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: bold; border: 1px solid #d32f2f;">Release</span>
                             `;
-                            action = `hx-delete="http://localhost:8083/api/reservations?id=${res.id}"`;
+                            action = `hx-delete="${CONFIG.API_BASE_URL}/api/reservations?id=${res.id}"`;
                             cursorInfo = `cursor: pointer; opacity: 1; color: white;`;
                             bgColor = '#ef5350';
                         } else {
@@ -92,9 +91,9 @@ export class ReservationController {
                                 border-radius: 4px; 
                                 text-align: center;
                                 display: flex;
-                                flex-direction: column;
-                                justify-content: center;
-                                align-items: center;
+                                flexDirection: column;
+                                justifyContent: center;
+                                alignItems: center;
                                 height: 60px;
                             ">
                                 ${content}

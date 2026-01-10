@@ -56,7 +56,8 @@ class ReservationController
             throw new Exception('No token provided');
         }
 
-        $decoded = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key("example_key", 'HS256'));
+        $key = getenv('JWT_SECRET') ?: 'default_dev_secret';
+        $decoded = \Firebase\JWT\JWT::decode($token, new \Firebase\JWT\Key($key, 'HS256'));
         return (int) $decoded->uid;
     }
 

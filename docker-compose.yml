@@ -82,18 +82,19 @@ services:
       - ./implementations/v2-python-vue/backend:/app
   # V3: Bun + HTMX
   # V3: Bun + HTMX
-  #   v3-bun:
-  #     build:
-  #       context: ./implementations/v3-bun-htmx/backend
-  #       dockerfile: Dockerfile
-  #     ports:
-  #       - "8083:3000"
-  #     environment:
-  #       - DATABASE_URL=postgres://user:password@db:5432/parking
-  #     depends_on:
-  #       - db
-  #     volumes:
-  #       - ./implementations/v3-bun-htmx/backend:/app
+  v3-bun:
+    build:
+      context: ./implementations/v3-bun-htmx/backend
+      dockerfile: Dockerfile
+    ports:
+      - "8083:3000"
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/parking
+    depends_on:
+      - db
+      - websocket
+    volumes:
+      - ./implementations/v3-bun-htmx/backend:/app
 
 volumes:
   pgdata:

@@ -1,3 +1,10 @@
 FROM oven/bun:1
-# Placeholder for V3
-CMD ["echo", "V3 Placeholder"]
+
+WORKDIR /app
+
+COPY package.json .
+RUN bun install --production
+
+COPY . .
+
+CMD ["bun", "index.ts"]

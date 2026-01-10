@@ -3,21 +3,21 @@ import AuthService from '../services/AuthService';
 import { getNextDays } from '../services/DateHelper';
 
 export default class SlotsPage extends Component {
-	constructor(element, router) {
-		super(element);
-		this.router = router;
-		this.user = AuthService.getCurrentUser();
-		this.days = getNextDays(3);
-	}
+  constructor(element, router) {
+    super(element);
+    this.router = router;
+    this.user = AuthService.getCurrentUser();
+    this.days = getNextDays(3);
+  }
 
-	template() {
-		const options = this.days.map((day, index) =>
-			`<option value="${day.value}" ${index === 0 ? 'selected' : ''}>
+  template() {
+    const options = this.days.map((day, index) =>
+      `<option value="${day.value}" ${index === 0 ? 'selected' : ''}>
          ${day.label} (${day.displayDate})
        </option>`
-		).join('');
+    ).join('');
 
-		return `
+    return `
       <div class="animate-enter">
         <header>
           <h1>
@@ -49,18 +49,74 @@ export default class SlotsPage extends Component {
         </main>
       </div>
     `;
-	}
+  }
 
-	afterRender() {
-		this.element.querySelector('#logout-btn').addEventListener('click', () => {
-			AuthService.logout();
-			this.router.navigate('/login');
-		});
+  afterRender() {
+    this.element.querySelector('#logout-btn').addEventListener('click', () => {
+      AuthService.logout();
+      this.router.navigate('/login');
+    });
 
-		const select = this.element.querySelector('#date-select');
-		select.addEventListener('change', (e) => {
-			const event = new CustomEvent('parking-date-change', { detail: e.target.value });
-			window.dispatchEvent(event);
-		});
-	}
+    const select = this.element.querySelector('#date-select');
+    select.addEventListener('change', (e) => {
+      const event = new CustomEvent('parking-date-change', { detail: e.target.value });
+      window.dispatchEvent(event);
+    });
+
+    // --- Integration Point for HTMX (V3) ---
+    const container = this.element.querySelector('#parking-slots-view');
+
+    // 1. Load HTMX if not present
+    if (!window.htmx) {
+      const script = document.createElement('script');
+      script.src = "https://unpkg.com/htmx.org@1.9.10";
+      script.onload = () => {
+        // Configure HTMX to send JWT
+        document.body.addEventListener('htmx:configRequest', (evt) => {
+          const token = sessionStorage.getItem('token');
+          if (token) {
+            evt.detail.headers['Authorization'] = `Bearer ${token}`;
+          }
+        });
+        loadSpots();
+      };
+      document.head.appendChild(script);
+    } else {
+      loadSpots();
+    }
+
+    const loadSpots = async () => {
+      const date = this.element.querySelector('#date-select').value;
+      try {
+        container.innerHTML = 'Loading HTMX...';
+        const token = sessionStorage.getItem('token');
+        const res = await fetch(`http://localhost:8083/api/spots?date=${date}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const html = await res.text();
+        container.innerHTML = `
+                <table class="w-full border-collapse">
+                    <thead><tr><th class="p-2 border">Spot</th><th class="p-2 border">08-12</th><th class="p-2 border">12-16</th><th class="p-2 border">16-20</th></tr></thead>
+                    <tbody>${html}</tbody>
+                </table>
+            `;
+        // Tell HTMX to verify the new DOM
+        window.htmx.process(container);
+      } catch (e) {
+        container.innerHTML = `<div style="color:red">Error loading V3 Backend: ${e.message}</div>`;
+      }
+    };
+
+    // Re-load on date change
+    window.addEventListener('parking-date-change', () => loadSpots());
+
+    // Connect WS (Shared Broker) for Auto-Refresh
+    const ws = new WebSocket('ws://localhost:8080');
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.event === 'update') loadSpots();
+    };
+  }
 }

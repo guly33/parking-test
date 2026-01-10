@@ -19,6 +19,9 @@ export default class SlotsPage extends Component {
 
     return `
       <div class="animate-enter">
+        <div style="position: fixed; bottom: 10px; right: 10px; background: #4F46E5; color: white; padding: 5px 10px; border-radius: 4px; z-index: 1000; font-weight: bold; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+          V1: PHP + React
+        </div>
         <header>
           <h1>
             <svg class="header-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">

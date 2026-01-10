@@ -1,8 +1,25 @@
 const http = require('http');
+const process = require('process');
 
-const API_BASE = 'http://localhost:8081/api';
+const TARGETS = {
+    'v1': { port: 8081, name: 'V1 (PHP)' },
+    'v2': { port: 8082, name: 'V2 (Python)' },
+    'v3': { port: 8083, name: 'V3 (Bun)' }
+};
+
+const targetKey = process.argv[2] || 'v1';
+const target = TARGETS[targetKey];
+
+if (!target) {
+    console.error(`❌ Unknown target: ${targetKey}. Use v1, v2, or v3.`);
+    process.exit(1);
+}
+
+const API_BASE = `http://localhost:${target.port}/api`;
 const LOGIN_URL = `${API_BASE}/login`;
 const RESERV_URL = `${API_BASE}/reservations`;
+
+console.log(`🎯 Target: ${target.name} on Port ${target.port}`);
 
 const SPOT_ID = 1;
 const CONCURRENCY = 20;

@@ -36,8 +36,8 @@ services:
   # V1: PHP + React
   v1-php:
     build:
-      context: ./implementations/v1-php-react/backend
-      dockerfile: Dockerfile
+      context: ./implementations/v1-php-react
+      dockerfile: backend/Dockerfile
     ports:
       - "8081:80"
     environment:
@@ -54,8 +54,8 @@ services:
 
   worker:
     build:
-      context: ./implementations/v1-php-react/backend
-      dockerfile: Dockerfile
+      context: ./implementations/v1-php-react
+      dockerfile: backend/Dockerfile
     command: sh -c "while true; do php /var/www/html/scripts/stale_checker.php; sleep 60; done"
     environment:
       - DB_HOST=db
@@ -70,8 +70,8 @@ services:
   # V2: Python + Vue
   v2-python:
     build:
-      context: ./implementations/v2-python-vue/backend
-      dockerfile: Dockerfile
+      context: ./implementations/v2-python-vue
+      dockerfile: backend/Dockerfile
     ports:
       - "8082:8000"
     environment:
@@ -86,8 +86,8 @@ services:
   # V3: Bun + HTMX
   v3-bun:
     build:
-      context: ./implementations/v3-bun-htmx/backend
-      dockerfile: Dockerfile
+      context: ./implementations/v3-bun-htmx
+      dockerfile: backend/Dockerfile
     ports:
       - "8083:3000"
     environment:

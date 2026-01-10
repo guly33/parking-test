@@ -7,8 +7,8 @@ This repository contains three distinct implementations of the Smart Parking sys
 | Variant | Backend | Frontend | Status | Key Features |
 | :--- | :--- | :--- | :--- | :--- |
 | **V1** | **PHP** (Native MVC) | **React** | ✅ **Complete** | Standard SPA integration, JWT Auth, Dockerized |
-| **V2** | **Python** (FastAPI) | **Vue** | ✅ **Active** | MVC Refactored, Shared WS Integrated |
-| **V3** | **Bun** (Elysia) | **HTMX** | 🚧 Pending | Hyper-fast Server-Driven UI |
+| **V2** | **Python** (FastAPI) | **Vue** | ✅ **Complete** | MVC Refactored, Shared WS Integrated |
+| **V3** | **Bun** (Elysia/Native) | **HTMX** | ✅ **Complete** | Hyper-fast Server-Driven UI, Server-Side SPA |
 
 ## 🛠️ Setup & Execution
 
@@ -20,35 +20,114 @@ docker-compose up --build
 ```
 
 Access the applications at:
-- **V1 (PHP):** http://localhost:8081
-- **V2 (Python):** http://localhost:8082 (API) / http://localhost:5174 (Dev Frontend)
-- **V3 (Bun):** http://localhost:8083
+- **V1 (PHP + React):** http://localhost:8081
+- **V2 (Python + Vue):** http://localhost:8082
+- **V3 (Bun + HTMX):** http://localhost:8083
 
-## 🏗️ Architecture Decisions
+> **Note:** All frontends are now served directly by their respective backends via Docker. No separate `npm run dev` is required!
 
-### Concurrency Handling (ADR 001)
-To satisfy the requirement *"If two users try to reserve Spot #5 at the exact same millisecond, only one should succeed"*, all implementations utilize **Database-Level Locking**.
-- **Mechanism:** `SELECT ... FOR UPDATE` (Pessimistic Locking) inside a transaction.
-- **Logic:** Lock the Spot -> Check for Overlapping Reservations -> Insert if Clear -> Commit.
-- **Why?** Guarantees serializability for the critical "booking" action, effectively eliminating race conditions at the database (the source of truth).
+### 🔑 Test Credentials
+- **Username:** `driver1`, `driver2`, `test`
+- **Password:** `password123`, `password123`, `test`
 
-### Real-Time Updates (ADR 002)
-- **Status:** ✅ **Active** (Integrated with V1 & V2)
-- **Architecture:** A **Standalone Bun Service** (`services/websocket`) acts as a dedicated message broker running on port `8080`.
-- **Flow:**
-    1.  **Backend (PHP/Python):** Pushes update to `http://websocket:8080/broadcast`.
-    2.  **Broker:** Broadcasts message to all connected clients.
-    3.  **Frontend (React/Vue/HTMX):** Listens on `ws://localhost:8080` and triggers a refresh.
+### 🏷️ Version Indicators
+Each frontend has a color-coded badge in the **bottom-right corner** to help you distinguish between implementations:
+- 🔵 **V1 (PHP):** Blue
+- 🟢 **V2 (Python)::** Green
+- 🟡 **V3 (Bun):** Yellow
 
-### Background Worker ("The Stale Checker")
-- A PHP script (`scripts/stale_checker.php`) runs every 60 seconds via a Docker sidecar container.
-- **Role:** Releases slots where `end_time < NOW()` and `status = 'active'`.
+## 🏗️ Architecture
+ 
+ ```mermaid
+ graph TD
+     subgraph Clients
+         C1[React Client]
+         C2[Vue Client]
+         C3[HTMX Client]
+     end
+     
+     subgraph Backends
+         P[V1: PHP :8081]
+         Py[V2: Python :8082]
+         B[V3: Bun :8083]
+     end
+ 
+     subgraph Shared Services
+         DB[("PostgreSQL :5435")]
+         WS["WebSocket Broker :8080"]
+         W["Stale Checker (PHP)"]
+     end
+ 
+     C1 -->|HTTP| P
+     C2 -->|HTTP| Py
+     C3 -->|HTTP| B
+     
+     C1 -.->|WS| WS
+     C2 -.->|WS| WS
+     C3 -.->|WS| WS
+ 
+     P -->|SQL| DB
+     Py -->|SQL| DB
+     B -->|SQL| DB
+     W -->|SQL| DB
+ 
+     P -->|Broadcast| WS
+     Py -->|Broadcast| WS
+     B -->|Broadcast| WS
+     W -->|Broadcast| WS
+ ```
+ 
+ ### Shared Services
+ 1.  **WebSocket Broker (Port 8080):** A standalone Bun service that handles real-time updates for *all* implementations.
+     -   **Protocol:** Backends send POST requests to `http://websocket:8080/broadcast`. Clients listen on `ws://localhost:8080`.
+ 2.  **Stale Checker (Background Worker):**
+     -   **Script:** `scripts/stale_checker.php` running in a sidecar container.
+     -   **Functionality:** Runs every 60s. Checks the **shared database** for expired reservations (`end_time < NOW()`) that are still `active`.
+     -   **Scope:** Releases spots for **ALL** users (V1, V2, V3) and notifies the WebSocket broker.
+ 
+ ### Concurrency Handling (ADR 001)
+ To satisfy the requirement *"If two users try to reserve Spot #5 at the exact same millisecond, only one should succeed"*, all implementations utilize **Database-Level Locking**.
+ 
+ ```mermaid
+ sequenceDiagram
+     participant Client
+     participant Backend
+     participant DB
+ 
+     Client->>Backend: POST /reservations
+     Backend->>DB: BEGIN TRANSACTION
+     Backend->>DB: SELECT ... FROM spots FOR UPDATE
+     Note right of DB: Row Locked 🔒
+     Backend->>DB: SELECT ... FROM reservations (Overlap Check)
+     alt Spot Occupied
+         Backend->>DB: ROLLBACK
+         Backend-->>Client: 409 Conflict
+     else Spot Free
+         Backend->>DB: INSERT INTO reservations
+         Backend->>DB: COMMIT
+         Note right of DB: Lock Released 🔓
+         Backend-->>Client: 201 Created
+     end
+ ```
+ 
+ - **Mechanism:** `SELECT ... FOR UPDATE` (Pessimistic Locking).
+ - **Why?** Guarantees serializability at the database level, the single source of truth.
+ 
+ ### Timezone Handling (ADR 008)
+ - **Decision:** **Server Local Time** is used for all logic.
+ - **Why?** Simplifies "Booking for Today" logic for a physical location.
 
-### Timezone Handling (ADR 008)
-- **Decision:** **Server Local Time** is used for all logic.
-- **Why?** Simplifies "Booking for Today" logic for a physical location-based service and prevents "off-by-one day" UI bugs common with UTC-to-Local conversions in simple date pickers.
-
-## 🧠 Assumptions
+## ⏱️ Estimation vs Actual
+ 
+ | Comp. | Estimated | Actual | Notes |
+ | :--- | :--- | :--- | :--- |
+ | **Shared Infra** | 2h | 2.5h | Docker Setup, PostgreSQL, Scaffolding, WebSocket Broker |
+ | **V1 (PHP)** | 2h | 1.5h | Core logic implementation & React setup |
+ | **V2 (Python)** | 3h | 1h | Ported logic from V1, very efficient |
+ | **V3 (Bun)** | 2h | 2h | Learning curve for Bun/HTMX & static hosting fixes |
+ | **Total**| **9h** | **7h** | Completed within one working day. |
+ 
+ ## 🧠 Assumptions
 1.  **Auth:** We use a Custom `User` Entity (ADR 006) capable of supporting future OIDC providers, but currently using seeded users (`driver1`, `driver2`, `test`).
 2.  **Persistence:** Docker volumes (`pgdata`) persist PostgreSQL data.
 
@@ -56,7 +135,13 @@ To satisfy the requirement *"If two users try to reserve Spot #5 at the exact sa
 A Node.js script is provided to stress-test the concurrency logic.
 
 ```bash
-# Run Concurrency Stress Test (20 parallel requests)
-node tests/concurrency_test.js
+# Test V1 (PHP)
+node tests/concurrency_test.js v1
+
+# Test V2 (Python)
+node tests/concurrency_test.js v2
+
+# Test V3 (Bun)
+node tests/concurrency_test.js v3
 ```
-The expected result is **1 Success** and **19 Conflicts** (safe failures).
+The expected result for **each** is **1 Success** and **19 Conflicts** (safe failures).

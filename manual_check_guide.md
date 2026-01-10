@@ -1,13 +1,13 @@
 # Manual Verification Guide (V1: PHP + React)
 
 ## 1. Prerequisites
-- Docker Stack Running: `sudo docker compose up ...`
-- Frontend Running: `npm run dev` (URL: http://localhost:5173)
+- Docker Stack Running: `docker compose up --build`
+- **No** local Node/NPM servers required.
 
 ## 2. Walkthrough Steps
 
 ### A. Login Flow
-1. Open browser to `http://localhost:5173`.
+1. Open browser to one of the implementations (e.g., `http://localhost:8081` for V1).
 2. Login with `driver1` / `password123`.
 3. Verify "Hello, driver1" appears in the header.
 

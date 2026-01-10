@@ -1,0 +1,36 @@
+# General
+.DS_Store
+.env
+.env.local
+*.log
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# PHP / Composer
+vendor/
+composer.lock
+
+# Node / JS / Bun
+node_modules/
+dist/
+build/
+.npm
+.bun/
+bun.lockb
+package-lock.json
+yarn.lock
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.pytest_cache/
+.coverage
+
+# System
+tmp/
+temp/

@@ -1,0 +1,89 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: parking_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: parking
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  # Migrations (Bonus: Auto-sync)
+  migrations:
+    image: amacneil/dbmate
+    container_name: parking_migrations
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/parking?sslmode=disable
+    volumes:
+      - ./implementations/v1-php-react/backend/migrations:/db/migrations
+    depends_on:
+      - db
+    command: --wait up
+
+  # V1: PHP + React
+  v1-php:
+    build:
+      context: ./implementations/v1-php-react/backend
+      dockerfile: Dockerfile
+    ports:
+      - "8081:80"
+    environment:
+      - DB_HOST=db
+      - DB_USER=user
+      - DB_PASS=password
+      - DB_NAME=parking
+    depends_on:
+      - db
+    volumes:
+      - ./implementations/v1-php-react/backend:/var/www/html
+      - /var/www/html/vendor
+
+  worker:
+    build:
+      context: ./implementations/v1-php-react/backend
+      dockerfile: Dockerfile
+    command: sh -c "while true; do php /var/www/html/scripts/stale_checker.php; sleep 60; done"
+    environment:
+      - DB_HOST=db
+      - DB_USER=user
+      - DB_PASS=password
+      - DB_NAME=parking
+    depends_on:
+      - db
+    volumes:
+      - ./implementations/v1-php-react/backend:/var/www/html
+      - /var/www/html/vendor
+  # V2: Python + Vue
+  # V2: Python + Vue
+  #   v2-python:
+  #     build:
+  #       context: ./implementations/v2-python-vue/backend
+  #       dockerfile: Dockerfile
+  #     ports:
+  #       - "8082:8000"
+  #     environment:
+  #       - DATABASE_URL=postgresql://user:password@db/parking
+  #     depends_on:
+  #       - db
+  #     volumes:
+  #       - ./implementations/v2-python-vue/backend:/app
+
+  # V3: Bun + HTMX
+  # V3: Bun + HTMX
+  #   v3-bun:
+  #     build:
+  #       context: ./implementations/v3-bun-htmx/backend
+  #       dockerfile: Dockerfile
+  #     ports:
+  #       - "8083:3000"
+  #     environment:
+  #       - DATABASE_URL=postgres://user:password@db:5432/parking
+  #     depends_on:
+  #       - db
+  #     volumes:
+  #       - ./implementations/v3-bun-htmx/backend:/app
+
+volumes:
+  pgdata:

@@ -67,20 +67,19 @@ services:
       - ./implementations/v1-php-react/backend:/var/www/html
       - /var/www/html/vendor
   # V2: Python + Vue
-  # V2: Python + Vue
-  #   v2-python:
-  #     build:
-  #       context: ./implementations/v2-python-vue/backend
-  #       dockerfile: Dockerfile
-  #     ports:
-  #       - "8082:8000"
-  #     environment:
-  #       - DATABASE_URL=postgresql://user:password@db/parking
-  #     depends_on:
-  #       - db
-  #     volumes:
-  #       - ./implementations/v2-python-vue/backend:/app
-
+  v2-python:
+    build:
+      context: ./implementations/v2-python-vue/backend
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db/parking
+    depends_on:
+      - db
+      - websocket
+    volumes:
+      - ./implementations/v2-python-vue/backend:/app
   # V3: Bun + HTMX
   # V3: Bun + HTMX
   #   v3-bun:

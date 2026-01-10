@@ -3,21 +3,21 @@ import AuthService from '../services/AuthService';
 import { getNextDays } from '../services/DateHelper';
 
 export default class SlotsPage extends Component {
-	constructor(element, router) {
-		super(element);
-		this.router = router;
-		this.user = AuthService.getCurrentUser();
-		this.days = getNextDays(3);
-	}
+  constructor(element, router) {
+    super(element);
+    this.router = router;
+    this.user = AuthService.getCurrentUser();
+    this.days = getNextDays(3);
+  }
 
-	template() {
-		const options = this.days.map((day, index) =>
-			`<option value="${day.value}" ${index === 0 ? 'selected' : ''}>
+  template() {
+    const options = this.days.map((day, index) =>
+      `<option value="${day.value}" ${index === 0 ? 'selected' : ''}>
          ${day.label} (${day.displayDate})
        </option>`
-		).join('');
+    ).join('');
 
-		return `
+    return `
       <div class="animate-enter">
         <header>
           <h1>
@@ -49,18 +49,27 @@ export default class SlotsPage extends Component {
         </main>
       </div>
     `;
-	}
+  }
 
-	afterRender() {
-		this.element.querySelector('#logout-btn').addEventListener('click', () => {
-			AuthService.logout();
-			this.router.navigate('/login');
-		});
+  afterRender() {
+    this.element.querySelector('#logout-btn').addEventListener('click', () => {
+      AuthService.logout();
+      this.router.navigate('/login');
+    });
 
-		const select = this.element.querySelector('#date-select');
-		select.addEventListener('change', (e) => {
-			const event = new CustomEvent('parking-date-change', { detail: e.target.value });
-			window.dispatchEvent(event);
-		});
-	}
+    const select = this.element.querySelector('#date-select');
+    select.addEventListener('change', (e) => {
+      const event = new CustomEvent('parking-date-change', { detail: e.target.value });
+      window.dispatchEvent(event);
+    });
+
+    // --- Integration Point for Framework Components ---
+    const container = this.element.querySelector('#parking-slots-view');
+
+    // Dynamic import to support splitting
+    import('../components/ParkingSlots.js').then(({ mount }) => {
+      container.innerHTML = ''; // Clear placeholder
+      mount(container);
+    }).catch(err => console.error("Failed to load Vue component", err));
+  }
 }

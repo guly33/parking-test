@@ -7,7 +7,7 @@ This repository contains three distinct implementations of the Smart Parking sys
 | Variant | Backend | Frontend | Status | Key Features |
 | :--- | :--- | :--- | :--- | :--- |
 | **V1** | **PHP** (Native MVC) | **React** | ✅ **Complete** | Standard SPA integration, JWT Auth, Dockerized |
-| **V2** | **Python** (FastAPI) | **Vue** | 🚧 Pending | Reactive component integration |
+| **V2** | **Python** (FastAPI) | **Vue** | ✅ **Active** | MVC Refactored, Shared WS Integrated |
 | **V3** | **Bun** (Elysia) | **HTMX** | 🚧 Pending | Hyper-fast Server-Driven UI |
 
 ## 🛠️ Setup & Execution
@@ -21,7 +21,7 @@ docker-compose up --build
 
 Access the applications at:
 - **V1 (PHP):** http://localhost:8081
-- **V2 (Python):** http://localhost:8082
+- **V2 (Python):** http://localhost:8082 (API) / http://localhost:5174 (Dev Frontend)
 - **V3 (Bun):** http://localhost:8083
 
 ## 🏗️ Architecture Decisions
@@ -33,8 +33,12 @@ To satisfy the requirement *"If two users try to reserve Spot #5 at the exact sa
 - **Why?** Guarantees serializability for the critical "booking" action, effectively eliminating race conditions at the database (the source of truth).
 
 ### Real-Time Updates (ADR 002)
-- **WebSockets:** A dedicated service broadcasts `booking_update` events. (Implementation Pending).
-- **Frontend:** The mounted widget (React/Vue/HTMX) listens to these events to instantly toggle spot availability (Green 🟢 / Red 🔴) without page reloads.
+- **Status:** ✅ **Active** (Integrated with V1 & V2)
+- **Architecture:** A **Standalone Bun Service** (`services/websocket`) acts as a dedicated message broker running on port `8080`.
+- **Flow:**
+    1.  **Backend (PHP/Python):** Pushes update to `http://websocket:8080/broadcast`.
+    2.  **Broker:** Broadcasts message to all connected clients.
+    3.  **Frontend (React/Vue/HTMX):** Listens on `ws://localhost:8080` and triggers a refresh.
 
 ### Background Worker ("The Stale Checker")
 - A PHP script (`scripts/stale_checker.php`) runs every 60 seconds via a Docker sidecar container.

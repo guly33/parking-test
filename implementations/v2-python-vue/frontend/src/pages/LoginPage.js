@@ -61,7 +61,10 @@ export default class LoginPage extends Component {
 			submitBtn.disabled = true;
 
 			try {
-				await AuthService.login(user, pass);
+				const result = await AuthService.login(user, pass);
+				if (!result.success) {
+					throw new Error(result.message);
+				}
 				this.router.navigate('/slots');
 			} catch (err) {
 				this.error = err.message;

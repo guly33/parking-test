@@ -7,14 +7,17 @@ Accepted
 The system must update the UI instantly when a spot is booked or released. We need a real-time communication protocol.
 
 ## Decision
-We will use **WebSockets**.
+We will use a **Standalone Shared WebSocket Service** built with **Bun**.
 
 ## Rationale
-1.  **Requirement:** The PDF explicitly mentions *"Implement a WebSocket server (using native WS, Socket.io, or similar)"*.
-2.  **Bi-directional:** While Server-Sent Events (SSE) would be sufficient for server-to-client updates, following the spec's terminology avoids ambiguity during evaluation.
-3.  **Latency:** WebSockets offer the lowest latency for high-frequency updates.
+1.  **Unified Architecture:** Instead of implementing 3 different WebSocket handlers (PHP/Ratchet, Python/FastAPI-WS, Bun/WS), we use one high-performance microservice.
+2.  **Decoupling:** Backends (Producers) only need to make a simple HTTP POST request. They don't need to manage persistent connections.
+3.  **Performance:** Bun's native WebSocket implementation is highly efficient.
 
 ## Implementation Details
-*   **Events:**
-    *   `spot_update`: Payload `{ spot_id: 1, status: 'booked' }`
-*   **Broadcast:** The server will broadcast this event to all connected clients immediately after a successful DB transaction for booking/release.
+*   **Service:** `services/websocket` (Bun) listening on port `8080`.
+*   **Protocol:**
+    *   **WS:** `ws://host:8080` (Clients subscribe to global topic 'parking').
+    *   **HTTP:** `POST http://host:8080/broadcast` (Backends publish updates).
+    *   **Payload:** `{ "event": "update", "spot_id": 1, "status": "reserved" }`.
+*   **Flow:** User Books -> Backend DB Commit -> Backend POSTs to WS Service -> WS Service Broadcasts to All Clients.

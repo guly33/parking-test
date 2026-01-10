@@ -60,6 +60,27 @@ class ReservationController
         return (int) $decoded->uid;
     }
 
+    private function broadcastUpdate(int $spotId)
+    {
+        // Non-blocking fire-and-forget to WS Broker
+        $payload = json_encode([
+            'event' => 'update',
+            'spot_id' => $spotId,
+            'status' => 'changed'
+        ]);
+
+        $opts = [
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\n",
+                'content' => $payload,
+                'timeout' => 1
+            ]
+        ];
+
+        @file_get_contents('http://websocket:8080/broadcast', false, stream_context_create($opts));
+    }
+
     public function createReservation()
     {
         try {
@@ -111,6 +132,9 @@ class ReservationController
 
             $this->db->commit();
 
+            // Notify WS
+            $this->broadcastUpdate((int) $spotId);
+
             http_response_code(201);
             echo json_encode(['message' => 'Reservation created']);
 
@@ -139,9 +163,6 @@ class ReservationController
                 return;
             }
 
-            // Verify Ownership OR Admin role (assume admin can release anything if we implement roles properly, but for now Strict Ownership)
-            // Ideally we check $user = User::findById($userId); if ($user->role === 'admin') ... 
-            // Stick to strict ownership for assignment safety.
             if ((int) $reservation['user_id'] !== $userId) {
                 http_response_code(403);
                 echo json_encode(['error' => 'Forbidden: You do not own this reservation']);
@@ -149,6 +170,10 @@ class ReservationController
             }
 
             $this->reservationModel->complete((int) $id);
+
+            // Notify WS
+            $this->broadcastUpdate((int) $reservation['spot_id']);
+
             echo json_encode(['message' => 'Reservation completed', 'id' => $id]);
 
         } catch (Exception $e) {

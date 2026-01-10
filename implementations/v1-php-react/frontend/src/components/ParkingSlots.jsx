@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 const SLOTS = [
     { label: '08:00 - 12:00', start: 8, end: 12 },
@@ -33,10 +33,10 @@ const Slots = () => {
         return () => window.removeEventListener('parking-date-change', handleDateChange);
     }, []);
 
-    const fetchSpots = async () => {
+    const fetchSpots = useCallback(async () => {
         try {
             // Send YYYY-MM-DD (Local)
-            const dateStr = selectedDate.toLocaleDateString('en-CA'); // 'en-CA' is typically YYYY-MM-DD
+            const dateStr = selectedDate.toLocaleDateString('en-CA');
             const res = await fetch(`http://localhost:8081/api/spots?date=${dateStr}`);
             if (!res.ok) throw new Error('Failed to fetch spots');
             const data = await res.json();
@@ -46,13 +46,66 @@ const Slots = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedDate]); // Recreates when date changes
+
+    // Keep a ref to the latest fetchSpots to avoid WS reconnects
+    const fetchSpotsRef = useRef(fetchSpots);
+    useEffect(() => {
+        fetchSpotsRef.current = fetchSpots;
+    }, [fetchSpots]);
 
     useEffect(() => {
         fetchSpots();
         const interval = setInterval(fetchSpots, 5000);
         return () => clearInterval(interval);
-    }, [selectedDate]);
+    }, [fetchSpots]);
+
+    // WebSocket Integration (ADR 002)
+    useEffect(() => {
+        let ws;
+        let reconnectTimer;
+
+        const connect = () => {
+            ws = new WebSocket(`ws://${window.location.hostname}:8080`);
+
+            ws.onopen = () => {
+                console.log('[WS] Connected to Shared Broker');
+                showToast('success', 'Realtime Connected');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.event === 'update') {
+                        console.log(`[WS] Update received for Spot #${data.spot_id}`);
+                        // Use ref to call the CURRENT fetchSpots closure with correct date
+                        if (fetchSpotsRef.current) {
+                            fetchSpotsRef.current();
+                        }
+                    }
+                } catch (e) {
+                    console.error('[WS] Parse error', e);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('[WS] Disconnected. Reconnecting...');
+                reconnectTimer = setTimeout(connect, 3000);
+            };
+
+            ws.onerror = (err) => {
+                console.warn('[WS] Error:', err);
+                ws.close();
+            };
+        };
+
+        connect();
+
+        return () => {
+            if (ws) ws.close();
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+        };
+    }, []); // Empty dep array: Connect ONCE. Use refs for dynamic logic.
 
     // Helper to format Date to YYYY-MM-DD HH:mm:ss (Local)
     const formatLocalTime = (date) => {

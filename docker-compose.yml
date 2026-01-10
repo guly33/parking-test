@@ -22,6 +22,17 @@ services:
       - db
     command: --wait up
 
+  # Shared WebSocket Broker (Bun)
+  websocket:
+    build:
+      context: ./services/websocket
+      dockerfile: Dockerfile
+    container_name: parking_websocket
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./services/websocket:/app
+
   # V1: PHP + React
   v1-php:
     build:

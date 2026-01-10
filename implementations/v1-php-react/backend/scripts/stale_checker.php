@@ -31,6 +31,11 @@ try {
             $update = $db->prepare("UPDATE reservations SET status = 'completed' WHERE id = :id");
             $update->execute(['id' => $res['id']]);
             echo "[" . date('H:i:s') . "] Auto-released Spot #{$res['spot_id']} (Reservation ID {$res['id']})\n";
+
+            // NOTIFY WS
+            $payload = json_encode(['event' => 'update', 'spot_id' => $res['spot_id'], 'status' => 'available']);
+            $opts = ['http' => ['method' => 'POST', 'header' => "Content-Type: application/json\r\n", 'content' => $payload, 'timeout' => 1]];
+            @file_get_contents('http://websocket:8080/broadcast', false, stream_context_create($opts));
         }
     } else {
         // Optional: reduce noise, or keep for heartbeat

@@ -18,7 +18,7 @@ class ReservationService:
         end_day = f"{date_str} 23:59:59"
 
         spots = self.spot_entity.get_all()
-        reservations = self.res_entity.get_active_in_bad_range(start_day, end_day)
+        reservations = self.res_entity.get_active_in_range(start_day, end_day)
         
         # Merge
         for spot in spots:

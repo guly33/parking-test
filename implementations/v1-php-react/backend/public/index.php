@@ -6,6 +6,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use App\Database;
 use App\AuthService;
 use App\ReservationController;
+use App\Logger;
 use Dotenv\Dotenv;
 
 // Load Env
@@ -50,10 +51,13 @@ if ($uri !== '/' && file_exists($filePath) && is_file($filePath)) {
 // 2. API Routes
 if (strpos($uri, '/api') === 0) {
     // Headers
+    // WARN: permissive CORS for development. In production, specify allowed origins.
     header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Headers: Content-Type, Authorization");
     header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
     header("Content-Type: application/json");
+
+    Logger::log("API Request: " . $_SERVER['REQUEST_METHOD'] . " " . $uri);
 
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS')
         exit(0);
@@ -62,6 +66,7 @@ if (strpos($uri, '/api') === 0) {
     try {
         $db = (new Database())->connect();
     } catch (Exception $e) {
+        Logger::error('Database connection failed: ' . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
         exit;

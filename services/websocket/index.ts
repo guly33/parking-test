@@ -1,8 +1,10 @@
+import { MiniLogger } from "./MiniLogger";
+
 const topic = "parking";
 
 const server = Bun.serve({
     port: 8080,
-    fetch(req, server) {
+    async fetch(req, server) {
         const url = new URL(req.url);
 
         // 1. WebSocket Upgrade
@@ -12,15 +14,16 @@ const server = Bun.serve({
 
         // 2. HTTP Broadcast Endpoint
         if (req.method === "POST" && url.pathname === "/broadcast") {
-            return req.json().then((data) => {
+            try {
+                const data = await req.json();
                 // Broadcast to all subscribers
                 const success = server.publish(topic, JSON.stringify(data));
-                console.log(`[WS] Broadcasted message to ${success} clients:`, data);
+                MiniLogger.info(`[WS] Broadcasted message to ${success} clients: ${JSON.stringify(data)}`);
                 return new Response(`Sent to ${success} clients`);
-            }).catch(err => {
-                console.error(err);
+            } catch (err) {
+                MiniLogger.error(String(err));
                 return new Response("Invalid JSON", { status: 400 });
-            });
+            }
         }
 
         // 3. Health Check
@@ -32,17 +35,18 @@ const server = Bun.serve({
     },
     websocket: {
         open(ws) {
-            console.log("[WS] Client connected");
+            MiniLogger.info("[WS] Client connected");
             ws.subscribe(topic);
         },
         message(ws, message) {
             // Clients typically don't send messages, but we can verify auth here if needed.
         },
         close(ws) {
-            console.log("[WS] Client disconnected");
+            MiniLogger.info("[WS] Client disconnected");
             ws.unsubscribe(topic);
         },
     },
 });
 
-console.log(`Listening on ${server.hostname}:${server.port}`);
+MiniLogger.info(`Listening on ${server.hostname}:${server.port}`);
+

@@ -2,6 +2,6 @@ FROM oven/bun:latest
 
 WORKDIR /app
 
-COPY index.ts .
+COPY . .
 
 CMD ["bun", "run", "index.ts"]

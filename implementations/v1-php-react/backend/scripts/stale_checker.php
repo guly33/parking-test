@@ -38,8 +38,7 @@ try {
             @file_get_contents('http://websocket:8080/broadcast', false, stream_context_create($opts));
         }
     } else {
-        // Optional: reduce noise, or keep for heartbeat
-        // echo "No stale reservations found.\n";
+        echo "No stale reservations found.\n";
     }
 
 } catch (Exception $e) {

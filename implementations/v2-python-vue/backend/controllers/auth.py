@@ -3,6 +3,9 @@ from pydantic import BaseModel
 from database import get_db_connection
 from entities.user import User
 from services.auth_service import AuthService
+from logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -17,6 +20,7 @@ def login(creds: LoginRequest):
         user = user_entity.find_by_username(creds.username)
         
         if not user:
+            logger.warning(f"Failed login attempt for username: {creds.username}")
             raise HTTPException(401, "Invalid credentials")
         
         # In a real app, verify password hash here.

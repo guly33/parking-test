@@ -11,9 +11,7 @@ export class ReservationService {
         `;
     }
 
-    static async create(userId: number, spotId: number, date: string, start: number, end: number): Promise<void> {
-        const start_time = `${date} ${String(start).padStart(2, '0')}:00:00`;
-        const end_time = `${date} ${String(end).padStart(2, '0')}:00:00`;
+    static async create(userId: number, spotId: number, start_time: string, end_time: string): Promise<void> {
 
         await sql.begin(async sql => {
             // 1. Lock

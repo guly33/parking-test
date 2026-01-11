@@ -1,8 +1,9 @@
 import { AuthController } from "./src/controllers/AuthController";
 import { ReservationController } from "./src/controllers/ReservationController";
 import { Router } from "./src/Router";
+import { Logger } from "./src/Logger";
 
-console.log("Bun Native Server running on :3000 (MVC)");
+Logger.info("Bun Native Server running on :3000 (MVC)");
 
 // Initialize Router
 const router = new Router();
@@ -55,7 +56,7 @@ const server = Bun.serve({
 
                 return new Response("Not Found", { status: 404, headers: corsHeaders });
             } catch (error) {
-                console.error(error);
+                Logger.error(String(error));
                 return new Response("Internal Server Error", { status: 500, headers: corsHeaders });
             }
         }
@@ -71,4 +72,4 @@ const server = Bun.serve({
     },
 });
 
-console.log(`Listening on http://localhost:${server.port}`);
+Logger.info(`Listening on http://localhost:${server.port}`);

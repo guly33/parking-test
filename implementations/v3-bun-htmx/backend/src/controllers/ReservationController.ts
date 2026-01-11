@@ -3,6 +3,7 @@ import { WSService } from "../services/WSService";
 import { SpotService } from "../services/SpotService";
 import { ReservationService } from "../services/ReservationService";
 import { CONFIG } from "../config";
+import { Logger } from "../Logger";
 
 export class ReservationController {
 
@@ -151,16 +152,30 @@ export class ReservationController {
                 body = Object.fromEntries(formData);
             }
 
-            const spot_id = body.spot_id;
-            const date = body.date;
-            const start = Number(body.start);
-            const end = Number(body.end);
 
-            await ReservationService.create(payload.uid, spot_id, date, start, end);
+
+            // ... inside method ...
+
+            const spot_id = body.spot_id;
+            let start_time = "";
+            let end_time = "";
+
+            if (body.date && body.start && body.end) {
+                start_time = `${body.date} ${String(body.start).padStart(2, '0')}:00:00`;
+                end_time = `${body.date} ${String(body.end).padStart(2, '0')}:00:00`;
+            } else if (body.start_time && body.end_time) {
+                start_time = body.start_time;
+                end_time = body.end_time;
+            } else {
+                throw new Error("Missing parameters: provide (date, start, end) or (start_time, end_time)");
+            }
+
+            await ReservationService.create(payload.uid, spot_id, start_time, end_time);
 
             return new Response(`<div class="p-2 text-center text-green-600 font-bold">Booked!</div>`, { headers: { "Content-Type": "text/html" } });
 
         } catch (e: any) {
+            Logger.error(`Reservation Failed: ${e.message}`);
             return new Response(`<div class="text-red-600">Error: ${e.message}</div>`, { status: 409, headers: { "Content-Type": "text/html" } });
         }
     }

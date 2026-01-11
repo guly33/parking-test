@@ -1,5 +1,6 @@
 import { AuthService } from "../services/AuthService";
 import { UserService } from "../services/UserService";
+import { Logger } from "../Logger";
 
 export class AuthController {
     static async login(req: Request): Promise<Response> {
@@ -22,7 +23,7 @@ export class AuthController {
             }), { headers: { "Content-Type": "application/json" } });
 
         } catch (e: any) {
-            console.error(e);
+            Logger.error(e);
             return new Response("Error", { status: 500 });
         }
     }

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import './ParkingSlots.css';
+
+// --- CONFIGURATION ---
+// In a real app, these would come from import.meta.env
+const API_BASE_URL = 'http://localhost:8081';
+const WS_URL = `ws://${window.location.hostname}:8080`;
 
 const SLOTS = [
     { label: '08:00 - 12:00', start: 8, end: 12 },
@@ -13,15 +19,23 @@ const Slots = () => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [toasts, setToasts] = useState([]);
 
-    const showToast = (type, message) => {
+    // Memoize auth data to avoid reading sessionStorage on every render
+    const { token, currentUserId } = useMemo(() => ({
+        token: sessionStorage.getItem('token'),
+        currentUserId: sessionStorage.getItem('userId')
+    }), []);
+
+    const removeToast = useCallback((id) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, []);
+
+    const showToast = useCallback((type, message) => {
         const id = Date.now();
         setToasts(prev => [...prev, { id, type, message }]);
-        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
-    };
+        setTimeout(() => removeToast(id), 3000);
+    }, [removeToast]);
 
-    const token = sessionStorage.getItem('token');
-    const currentUserId = sessionStorage.getItem('userId');
-
+    // --- EVENT LISTENERS ---
     useEffect(() => {
         const handleDateChange = (e) => {
             const d = new Date(e.detail);
@@ -33,58 +47,61 @@ const Slots = () => {
         return () => window.removeEventListener('parking-date-change', handleDateChange);
     }, []);
 
+    // --- DATA FETCHING ---
     const fetchSpots = useCallback(async () => {
-        const token = sessionStorage.getItem('token');
         if (!token) return;
 
         try {
-            // Send YYYY-MM-DD (Local)
+            // Send YYYY-MM-DD (Local) - Note: Be careful with timezone shifts here
             const dateStr = selectedDate.toLocaleDateString('en-CA');
-            const res = await fetch(`http://localhost:8081/api/spots?date=${dateStr}`);
+            const res = await fetch(`${API_BASE_URL}/api/spots?date=${dateStr}`);
             if (!res.ok) throw new Error('Failed to fetch spots');
             const data = await res.json();
             setSpots(data);
         } catch (err) {
             console.error(err);
+            // Don't set global error state on background refreshes unless it's the first load
+            if (loading) setError('Failed to load parking spots');
         } finally {
             setLoading(false);
         }
-    }, [selectedDate]); // Recreates when date changes
+    }, [selectedDate, token, loading]);
 
-    // Keep a ref to the latest fetchSpots to avoid WS reconnects
+    // Ref for WS to call latest fetchSpots
     const fetchSpotsRef = useRef(fetchSpots);
     useEffect(() => {
         fetchSpotsRef.current = fetchSpots;
     }, [fetchSpots]);
 
+    // Initial Fetch & Polling (Fallback)
     useEffect(() => {
         fetchSpots();
-        const interval = setInterval(fetchSpots, 5000);
+        // Poll every 10s as a fallback, or if WS fails
+        const interval = setInterval(fetchSpots, 10000);
         return () => clearInterval(interval);
     }, [fetchSpots]);
 
-    // WebSocket Integration (ADR 002)
+    // --- WEBSOCKET ---
     useEffect(() => {
         let ws;
         let reconnectTimer;
+        let isUnmounted = false;
 
         const connect = () => {
-            ws = new WebSocket(`ws://${window.location.hostname}:8080`);
+            ws = new WebSocket(WS_URL);
 
             ws.onopen = () => {
                 console.log('[WS] Connected to Shared Broker');
-                showToast('success', 'Realtime Connected');
+                if (!isUnmounted) showToast('success', 'Realtime Connected');
             };
 
             ws.onmessage = (event) => {
+                if (isUnmounted) return;
                 try {
                     const data = JSON.parse(event.data);
                     if (data.event === 'update') {
                         console.log(`[WS] Update received for Spot #${data.spot_id}`);
-                        // Use ref to call the CURRENT fetchSpots closure with correct date
-                        if (fetchSpotsRef.current) {
-                            fetchSpotsRef.current();
-                        }
+                        if (fetchSpotsRef.current) fetchSpotsRef.current();
                     }
                 } catch (e) {
                     console.error('[WS] Parse error', e);
@@ -92,6 +109,7 @@ const Slots = () => {
             };
 
             ws.onclose = () => {
+                if (isUnmounted) return;
                 console.log('[WS] Disconnected. Reconnecting...');
                 reconnectTimer = setTimeout(connect, 3000);
             };
@@ -105,12 +123,13 @@ const Slots = () => {
         connect();
 
         return () => {
+            isUnmounted = true;
             if (ws) ws.close();
             if (reconnectTimer) clearTimeout(reconnectTimer);
         };
-    }, []); // Empty dep array: Connect ONCE. Use refs for dynamic logic.
+    }, [showToast]);
 
-    // Helper to format Date to YYYY-MM-DD HH:mm:ss (Local)
+    // --- ACTIONS ---
     const formatLocalTime = (date) => {
         const pad = (n) => n < 10 ? '0' + n : n;
         const y = date.getFullYear();
@@ -123,7 +142,6 @@ const Slots = () => {
     };
 
     const handleBook = async (spotId, slot) => {
-        // Construct Start/End Time based on Selected Date and Slot Hours
         const start = new Date(selectedDate);
         start.setHours(slot.start, 0, 0, 0);
 
@@ -131,7 +149,7 @@ const Slots = () => {
         end.setHours(slot.end, 0, 0, 0);
 
         try {
-            const res = await fetch('http://localhost:8081/api/reservations', {
+            const res = await fetch(`${API_BASE_URL}/api/reservations`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -159,7 +177,7 @@ const Slots = () => {
     const handleRelease = async (e, reservationId) => {
         e.stopPropagation();
         try {
-            const res = await fetch(`http://localhost:8081/api/reservations/${reservationId}/complete`, {
+            const res = await fetch(`${API_BASE_URL}/api/reservations/${reservationId}/complete`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -174,23 +192,23 @@ const Slots = () => {
         }
     };
 
-    if (loading) return <div>Loading Slots...</div>;
-    if (error) return <div className="error">{error}</div>;
+    if (loading && spots.length === 0) return <div className="loading-message">Loading Slots...</div>;
+    if (error) return <div className="error-message">{error}</div>;
 
     return (
-        <div className="react-slots-container" style={{ padding: '20px', border: '1px solid #ccc' }}>
-            <div style={{ marginBottom: '15px' }}>
+        <div className="react-slots-container">
+            <div className="header-section">
                 <h3>Parking Schedule (5 Spots x 3 Slots)</h3>
                 <p>Date: {selectedDate.toDateString()}</p>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-responsive">
+                <table className="slots-table">
                     <thead>
                         <tr>
-                            <th style={{ textAlign: 'left', padding: '10px', borderBottom: '2px solid #ddd' }}>Spot</th>
+                            <th style={{ textAlign: 'left' }}>Spot</th>
                             {SLOTS.map(slot => (
-                                <th key={slot.label} style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>
+                                <th key={slot.label} style={{ textAlign: 'center' }}>
                                     {slot.label}
                                 </th>
                             ))}
@@ -198,21 +216,17 @@ const Slots = () => {
                     </thead>
                     <tbody>
                         {spots.map(spot => (
-                            <tr key={spot.id} style={{ borderBottom: '1px solid #eee' }}>
-                                <td style={{ padding: '10px', fontWeight: 'bold' }}>{spot.name} <br /> <small>{spot.type}</small></td>
+                            <tr key={spot.id}>
+                                <td className="spot-info">
+                                    {spot.name}
+                                    <span className="spot-type">{spot.type}</span>
+                                </td>
                                 {SLOTS.map(slot => {
-                                    // 1. Check for Overlap (Active Reservation)
+                                    // 1. Check for Overlap
                                     const reservation = spot.reservations.find(r => {
                                         const rStart = new Date(r.start_time.replace(' ', 'T'));
                                         const rEnd = new Date(r.end_time.replace(' ', 'T'));
-
-                                        // Convert to hours for simple int comparison against fixed slots
-                                        // Optimization: We assume same-day reservations based on backend query
-                                        const startH = rStart.getHours();
-                                        const endH = rEnd.getHours();
-
-                                        // Overlap: (Start < SlotEnd) and (End > SlotStart)
-                                        return startH < slot.end && endH > slot.start;
+                                        return rStart.getHours() < slot.end && rEnd.getHours() > slot.start;
                                     });
 
                                     const isBooked = !!reservation;
@@ -220,37 +234,26 @@ const Slots = () => {
 
                                     // 2. Check for Past Slots
                                     const now = new Date();
-                                    // Check if selectedDate is "Today" (ignoring time)
                                     const isToday = selectedDate.toDateString() === now.toDateString();
-                                    // Strict Past Logic: If current hour >= Slot Start, it's unavailable/started.
                                     const isPast = isToday && now.getHours() >= slot.start;
 
-                                    // 3. Determine Style
-                                    let bg = '#4caf50'; // Green (Available)
+                                    // 3. Determine Class
+                                    let slotClass = 'slot-available';
                                     let text = 'Available';
-                                    let cursor = 'pointer';
 
                                     if (isPast) {
-                                        bg = '#cccccc'; // Grey (Expired)
+                                        slotClass = 'slot-expired';
                                         text = 'Expired';
-                                        cursor = 'not-allowed';
                                     } else if (isBooked) {
-                                        bg = isMySpot ? '#d32f2f' : 'grey'; // Red or Grey
+                                        slotClass = isMySpot ? 'slot-booked-mine' : 'slot-booked';
                                         text = 'Booked';
-                                        cursor = isMySpot ? 'default' : 'not-allowed'; // Only own spots are interactive (release)
                                     }
 
                                     return (
-                                        <td key={slot.label} className="slot-cell" style={{ padding: '4px' }}>
+                                        <td key={slot.label} className="slot-cell">
                                             <div
-                                                className="slot-content"
+                                                className={`slot-content ${slotClass}`}
                                                 onClick={() => !isBooked && !isPast && handleBook(spot.id, slot)}
-                                                style={{
-                                                    backgroundColor: bg,
-                                                    color: 'white',
-                                                    cursor: cursor,
-                                                    opacity: isPast ? 0.6 : 1
-                                                }}
                                             >
                                                 <span className="slot-text">{text}</span>
                                                 {isBooked && isMySpot && !isPast && (
@@ -273,12 +276,17 @@ const Slots = () => {
 
             <div className="toast-container">
                 {toasts.map(toast => (
-                    <div key={toast.id} className={`toast ${toast.type}`}>
+                    <div
+                        key={toast.id}
+                        className={`toast ${toast.type}`}
+                        onClick={() => removeToast(toast.id)}
+                        title="Click to dismiss"
+                    >
                         {toast.type === 'success' ? '✅' : '❌'} {toast.message}
                     </div>
                 ))}
             </div>
-        </div >
+        </div>
     );
 };
 

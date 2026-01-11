@@ -63,23 +63,24 @@ class ReservationController
 
     private function broadcastUpdate(int $spotId)
     {
-        // Non-blocking fire-and-forget to WS Broker
+        // Non-blocking fire-and-forget to WS Broker via cURL
         $payload = json_encode([
             'event' => 'update',
             'spot_id' => $spotId,
             'status' => 'changed'
         ]);
 
-        $opts = [
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-Type: application/json\r\n",
-                'content' => $payload,
-                'timeout' => 1
-            ]
-        ];
-
-        @file_get_contents('http://websocket:8080/broadcast', false, stream_context_create($opts));
+        $ch = curl_init('http://websocket:8080/broadcast');
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        // Very short timeout to avoid blocking if WS is down
+        curl_setopt($ch, CURLOPT_TIMEOUT_MS, 100);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        // Don't wait for response body if possible, though strict non-blocking in PHP is hard without async
+        // relying on short timeout.
+        curl_exec($ch);
+        curl_close($ch);
     }
 
     public function createReservation()
@@ -92,16 +93,31 @@ class ReservationController
             return;
         }
 
-        $data = json_decode(file_get_contents("php://input"), true);
-        $spotId = $data['spot_id'];
+        $input = file_get_contents("php://input");
+        $data = json_decode($input, true);
+
+        // Security: Input Validation
+        if (!isset($data['spot_id']) || !isset($data['start_time']) || !isset($data['end_time'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing required fields: spot_id, start_time, end_time']);
+            return;
+        }
+
+        if (!is_numeric($data['spot_id'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid spot_id']);
+            return;
+        }
+
+        $spotId = (int) $data['spot_id'];
         $start = $data['start_time'];
         $end = $data['end_time'];
 
         // Validate: Start time must not be in the past (allow 5 min buffer)
         $startTimeTs = strtotime($start);
-        if ($startTimeTs < (time() - 300)) {
+        if (!$startTimeTs || $startTimeTs < (time() - 300)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Cannot book in the past']);
+            echo json_encode(['error' => 'Invalid start_time or cannot book in the past']);
             return;
         }
 

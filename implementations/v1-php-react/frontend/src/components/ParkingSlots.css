@@ -1,0 +1,184 @@
+.react-slots-container {
+    padding: 20px;
+    border: 1px solid #ccc;
+    font-family: sans-serif;
+}
+
+.header-section {
+    margin-bottom: 15px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.slots-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.slots-table th {
+    padding: 10px;
+    border-bottom: 2px solid #ddd;
+    background-color: #f8f9fa;
+}
+
+.slots-table td {
+    border-bottom: 1px solid #eee;
+}
+
+.spot-info {
+    padding: 10px;
+    font-weight: bold;
+}
+
+.spot-type {
+    display: block;
+    font-size: 0.8em;
+    font-weight: normal;
+    color: #666;
+}
+
+.slot-cell {
+    padding: 4px;
+    text-align: center;
+}
+
+.slot-content {
+    border-radius: 4px;
+    padding: 10px;
+    transition: all 0.2s;
+    min-height: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.slot-text {
+    font-weight: 500;
+}
+
+/* Status Colors */
+.slot-available {
+    background-color: #4caf50;
+    color: white;
+    cursor: pointer;
+}
+
+.slot-available:hover {
+    background-color: #43a047;
+}
+
+.slot-expired {
+    background-color: #cccccc;
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.slot-booked {
+    background-color: grey;
+    color: white;
+    cursor: not-allowed;
+}
+
+.slot-booked-mine {
+    background-color: #d32f2f;
+    color: white;
+    cursor: default;
+}
+
+.release-btn {
+    background-color: white;
+    color: #d32f2f;
+    border: none;
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 0.8em;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.release-btn:hover {
+    background-color: #ffebee;
+}
+
+.error-message {
+    color: #d32f2f;
+    padding: 20px;
+    text-align: center;
+    background: #ffebee;
+    border-radius: 4px;
+}
+
+.loading-message {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+/* Toast Notification System */
+.toast-container {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30%;
+    min-width: 300px;
+    /* Ensure it doesn't get too small on mobile */
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+    align-items: center;
+    /* Center items if they don't fill width */
+}
+
+.toast {
+    pointer-events: auto;
+    padding: 16px 24px;
+    /* Rounded bottom corners only */
+    border-radius: 0 0 12px 12px;
+    background: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    /* Fill the container width */
+    border-top: 4px solid transparent;
+    /* Changed from border-left to border-top for top-hanging style */
+    border-left: none;
+    animation: toastSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.toast:hover {
+    transform: translateY(2px);
+}
+
+.toast.success {
+    border-top-color: #10b981;
+}
+
+.toast.error {
+    border-top-color: #ef4444;
+}
+
+@keyframes toastSlideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

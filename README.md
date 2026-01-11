@@ -132,6 +132,7 @@ Each frontend has a color-coded badge in the **bottom-right corner** to help you
 2.  **Persistence:** Docker volumes (`pgdata`) persist PostgreSQL data.
 
 ## 🧪 Testing & Verification
+For a complete list of test cases, including manual concurrency races and logging verification, please refer to [Testing Scenarios](testing_scenarios.md).
 A Node.js script is provided to stress-test the concurrency logic.
 
 ```bash

@@ -21,7 +21,7 @@ const RESERV_URL = `${API_BASE}/reservations`;
 
 console.log(`🎯 Target: ${target.name} on Port ${target.port}`);
 
-const SPOT_ID = 1;
+const SPOT_ID = 5;
 const CONCURRENCY = 20;
 
 // Helper for requests
@@ -69,7 +69,9 @@ function request(url, method, data, headers = {}) {
     const promises = [];
     const now = new Date();
     // Use a time in the future to ensure valid start
-    const start = new Date(now.getTime() + 1000 * 60 * 60 * 24); // Tomorrow
+    // Use a time in the future to ensure valid start, plus random offset to avoid collisions
+    const randomDays = Math.floor(Math.random() * 30);
+    const start = new Date(now.getTime() + 1000 * 60 * 60 * 24 * (1 + randomDays)); // Tomorrow + 0-30 days
 
     // Format YYYY-MM-DD HH:mm:ss
     const fmt = (d) => d.toISOString().replace('T', ' ').slice(0, 19);
@@ -89,9 +91,9 @@ function request(url, method, data, headers = {}) {
     const results = await Promise.all(promises);
 
     // 3. Analyze
-    const successes = results.filter(r => r.status === 201).length;
+    const successes = results.filter(r => r.status === 201 || r.status === 200).length;
     const conflicts = results.filter(r => r.status === 409).length;
-    const errors = results.filter(r => r.status !== 201 && r.status !== 409);
+    const errors = results.filter(r => r.status !== 201 && r.status !== 200 && r.status !== 409);
 
     console.log(`\n📊 Results:`);
     console.log(`✅ Successes: ${successes} (Target: 1)`);

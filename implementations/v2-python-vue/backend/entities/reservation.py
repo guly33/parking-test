@@ -4,7 +4,7 @@ class Reservation:
     def __init__(self, conn):
         self.conn = conn
 
-    def get_active_in_bad_range(self, start_time, end_time):
+    def get_active_in_range(self, start_time, end_time):
         query = text("""
             SELECT * FROM reservations 
             WHERE status = 'active' 

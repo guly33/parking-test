@@ -17,6 +17,12 @@ def get_spots(date: str = None):
         service = ReservationService(conn)
         return service.get_spots_with_reservations(date)
 
+@router.get("/api/stats")
+def get_stats():
+    with get_db_connection() as conn:
+        service = ReservationService(conn)
+        return service.get_stats()
+
 @router.post("/api/reservations", status_code=201)
 def create_reservation(req: ReservationRequest, user_id: int = Depends(AuthService.get_current_user_id)):
     with get_db_connection() as conn:

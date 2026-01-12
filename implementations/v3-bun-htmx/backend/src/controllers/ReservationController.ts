@@ -198,4 +198,14 @@ export class ReservationController {
             return new Response(`Error: ${e.message}`, { status: 409 });
         }
     }
+
+    // GET /api/stats
+    static async getStats(req: Request): Promise<Response> {
+        try {
+            const stats = await ReservationService.getStats();
+            return new Response(JSON.stringify(stats), { headers: { "Content-Type": "application/json" } });
+        } catch (e: any) {
+            return new Response(`Error: ${e.message}`, { status: 500 });
+        }
+    }
 }

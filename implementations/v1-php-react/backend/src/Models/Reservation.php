@@ -77,10 +77,10 @@ class Reservation
     public function getStats(): array
     {
         $stmt = $this->pdo->query("
-            SELECT spot_id, COUNT(*) as usage_count 
+            SELECT EXTRACT(HOUR FROM start_time) as hour, COUNT(*) as count 
             FROM reservations 
-            GROUP BY spot_id 
-            ORDER BY spot_id ASC
+            GROUP BY hour 
+            ORDER BY count DESC
         ");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

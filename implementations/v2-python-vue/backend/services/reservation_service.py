@@ -61,3 +61,6 @@ class ReservationService:
             self.res_entity.complete(reservation_id)
             
         WebSocketService.broadcast_update(res['spot_id'])
+
+    def get_stats(self):
+        return self.res_entity.get_hour_stats()

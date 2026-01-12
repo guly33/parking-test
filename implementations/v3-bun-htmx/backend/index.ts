@@ -10,6 +10,7 @@ const router = new Router();
 router.add("POST", "/api/login", AuthController.login);
 router.add("GET", "/api/spots", ReservationController.getSpots);
 router.add("POST", "/api/reservations", ReservationController.createReservation);
+router.add("GET", "/api/stats", ReservationController.getStats);
 router.add("DELETE", "/api/reservations", ReservationController.releaseReservation);
 
 const server = Bun.serve({

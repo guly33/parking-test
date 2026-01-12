@@ -131,6 +131,18 @@ Each frontend has a color-coded badge in the **bottom-right corner** to help you
 1.  **Auth:** We use a Custom `User` Entity (ADR 006) capable of supporting future OIDC providers, but currently using seeded users (`driver1`, `driver2`, `test`).
 2.  **Persistence:** Docker volumes (`pgdata`) persist PostgreSQL data.
 
+
+## 📊 Analytics API
+All backends expose a standardized analytics endpoint:
+- **Endpoint:** `GET /api/stats`
+- **Response:** JSON array of peak occupancy hours.
+  ```json
+  [
+    { "hour": 8, "count": 12 },
+    { "hour": 9, "count": 20 }
+  ]
+  ```
+
 ## 🧪 Testing & Verification
 For a complete list of test cases, including manual concurrency races and logging verification, please refer to [Testing Scenarios](testing_scenarios.md).
 A Node.js script is provided to stress-test the concurrency logic.

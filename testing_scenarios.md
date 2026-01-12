@@ -79,6 +79,15 @@ This document outlines the key scenarios to verify the correctness, concurrency 
 ## 5. Persistence
 **Goal**: Verify data survives container restarts.
 
+- [ ] **Analytics Check**:
+  - Visit `http://localhost:8081/api/stats` (V1)
+  - Visit `http://localhost:8082/api/stats` (V2)
+  - Visit `http://localhost:8083/api/stats` (V3)
+  - **Expectation**: All return a JSON array like `[{"hour": 8, "count": 12}, ...]`.
+
+- [ ] **Action**:
+  - Book a few spots.
+
 - [ ] **Action**:
   - Book a few spots.
   - Run `docker compose restart db`.

@@ -52,4 +52,13 @@ export class ReservationService {
         if (spotId) WSService.broadcastUpdate(spotId);
         return spotId;
     }
+
+    static async getStats(): Promise<any[]> {
+        return await sql`
+            SELECT EXTRACT(HOUR FROM start_time) as hour, COUNT(*) as count 
+            FROM reservations 
+            GROUP BY hour 
+            ORDER BY count DESC
+        `;
+    }
 }

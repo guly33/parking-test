@@ -41,3 +41,13 @@ class Reservation:
     def complete(self, reservation_id):
         query = text("UPDATE reservations SET status = 'completed' WHERE id = :id")
         self.conn.execute(query, {"id": reservation_id})
+
+    def get_hour_stats(self):
+        query = text("""
+            SELECT EXTRACT(HOUR FROM start_time) as hour, COUNT(*) as count 
+            FROM reservations 
+            GROUP BY hour 
+            ORDER BY count DESC
+        """)
+        result = self.conn.execute(query).mappings().all()
+        return [dict(r) for r in result]
